@@ -8,12 +8,11 @@ mongoose.connect(mongoString);
 const database = mongoose.connection;
 
 database.on('error', (error) => {
-    console.log(mongoString);
-    //console.log(error)
+    console.log(error)
 })
 
 database.once('connected', () => {
-    console.log('Datfabase Connected');
+    console.log('Database Connected');
 })
 const app = express();
 
