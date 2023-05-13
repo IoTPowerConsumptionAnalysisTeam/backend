@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const dataSchema = new mongoose.Schema({
   user: {
@@ -13,10 +13,10 @@ const dataSchema = new mongoose.Schema({
     required: true,
     type: String,
   },
-  power:{
+  power: {
     required: true,
-    type: Number
-  }
+    type: [],
+  },
 });
 
-module.exports = mongoose.model('Data', dataSchema);
+module.exports = mongoose.model("power_socket", dataSchema);
