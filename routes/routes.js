@@ -11,6 +11,8 @@ const user = require("../models/user");
 const not_your_power_socket = "This isn't your power socket";
 const user_not_found = "user not found";
 const power_socket_not_found = "power socket not found";
+const update_failed = "update failed due to internal server error";
+const delete_failed = "delete failed due to internal server error";
 
 // register user
 router.post("/user", async (req, res) => {
@@ -27,7 +29,7 @@ router.post("/user", async (req, res) => {
 
 // register new power socket
 router.post("/power_socket", async (req, res) => {
-  let user_id = req.body.user_token;
+  let user_id = req.body.user_id;
   const data = new power_socket({
     user: user_id,
     category: req.body.category,
@@ -53,10 +55,15 @@ router.post("/power_socket", async (req, res) => {
       { power_socket: power_socket },
       options
     );
-    res.status(200).json("Registered succeed!");
+    if (result == null) {
+      throw update_failed;
+    }
+    res.status(200).json(new_power_socket);
   } catch (error) {
     if (error == user_not_found) {
       res.status(404).json({ message: error });
+    } else if (error == update_failed) {
+      res.status(500).json({ message: error });
     } else {
       res.status(400).json({ message: error.message });
     }
@@ -65,11 +72,10 @@ router.post("/power_socket", async (req, res) => {
 
 // get all power sockets
 router.get("/power_socket", async (req, res) => {
-  console.log("get all")
-  const user_token = req.body.user_token;
+  const user_id = req.body.user_id;
   try {
     // find user
-    const target_user = await user.findById(user_token);
+    const target_user = await user.findById(user_id);
     if (target_user == null) {
       throw user_not_found;
     }
@@ -81,6 +87,7 @@ router.get("/power_socket", async (req, res) => {
     if (error == user_not_found) {
       res.status(404).json({ message: error });
     } else {
+      user_id;
       res.status(400).json({ message: error.message });
     }
   }
@@ -88,12 +95,17 @@ router.get("/power_socket", async (req, res) => {
 
 // get one power socket
 router.get("/power_socket/:id", async (req, res) => {
-  console.log("get one power socket")
-  const user_token = req.body.user_token;
+  const user_id = req.body.user_id;
   const power_socket_id = req.params.id;
   try {
+    // find power socket
+    const target_power_socket = await power_socket.findById(power_socket_id);
+    if (target_power_socket == null) {
+      throw power_socket_not_found;
+    }
+
     // find user
-    const target_user = await user.findById(user_token);
+    const target_user = await user.findById(user_id);
     if (target_user == null) {
       throw user_not_found;
     }
@@ -110,14 +122,12 @@ router.get("/power_socket/:id", async (req, res) => {
     }
 
     if (verified) {
-      console.log("verified")
-      const target_power_socket = await power_socket.findById(power_socket_id);
       res.status(200).json(target_power_socket);
     } else {
       throw not_your_power_socket;
     }
   } catch (error) {
-    if (error == user_not_found) {
+    if (error == user_not_found || error == power_socket_not_found) {
       res.status(404).json({ message: error });
     } else if (error == not_your_power_socket) {
       res.status(401).json({ message: error });
@@ -129,14 +139,20 @@ router.get("/power_socket/:id", async (req, res) => {
 
 // edit power socket
 router.patch("/power_socket/:id", async (req, res) => {
-  const user_token = req.body.user;
+  const user_id = req.body.user_id;
   let newData = req.body;
   delete newData.user;
   const power_socket_id = req.params.id;
   const options = { new: true };
   try {
+    // find power socket
+    const target_power_socket = await power_socket.findById(power_socket_id);
+    if (target_power_socket == null) {
+      throw power_socket_not_found;
+    }
+
     // find user
-    const target_user = await user.findById(user_token);
+    const target_user = await user.findById(user_id);
     if (target_user == null) {
       throw user_not_found;
     }
@@ -164,7 +180,7 @@ router.patch("/power_socket/:id", async (req, res) => {
       throw not_your_power_socket;
     }
   } catch (error) {
-    if (error == user_not_found) {
+    if (error == user_not_found || error == power_socket_not_found) {
       res.status(404).json({ message: error });
     } else if (error == not_your_power_socket) {
       res.status(401).json({ message: error });
@@ -174,9 +190,9 @@ router.patch("/power_socket/:id", async (req, res) => {
   }
 });
 
-//TODO delete power socket
+// delete one power socket
 router.delete("/power_socket/:id", async (req, res) => {
-  const user_token = req.body.user;
+  const user_id = req.body.user_id;
   const power_socket_id = req.params.id;
   try {
     // find power socket
@@ -186,52 +202,99 @@ router.delete("/power_socket/:id", async (req, res) => {
     }
 
     // find user
-    const target_user = await user.findById(user_token);
+    const target_user = await user.findById(user_id);
     if (target_user == null) {
       throw user_not_found;
     }
 
-    // // verify power_socket is owned by the user
-    // verified = false;
-    // let power_socket_array = target_user.power_socket;
-    // let array_length = power_socket_array.length;
-    // let index = -1;
-    // for (let i = 0; i < array_length; i++) {
-    //   if (power_socket_array[i] == power_socket_id) {
-    //     verified = true;
-    //     index = i;
-    //     break;
-    //   }
-    // }
+    // verify power_socket is owned by the user
+    verified = false;
+    let power_socket_array = target_user.power_socket;
+    let array_length = power_socket_array.length;
+    let index = -1;
+    for (let i = 0; i < array_length; i++) {
+      if (power_socket_array[i] == power_socket_id) {
+        verified = true;
+        index = i;
+        break;
+      }
+    }
 
-    // if (verified) {
-    //   // delete power socket from power_socket table
-    //   const delete_result = await power_socket.findByIdAndDelete(
-    //     power_socket_id
-    //   );
+    if (verified) {
+      // delete power socket from power_socket table
+      const delete_result = await power_socket.findByIdAndDelete(
+        power_socket_id
+      );
+      if (delete_result == null) {
+        throw delete_failed;
+      }
 
-    //   //delete power socket from user power_socket array
-    //   let power_socket_array = target_user.power_socket;
-    //   power_socket_array.splice(index, 1);
-    //   console.log(index);
-    //   console.log(power_socket_array);
-    //   const options = { new: true };
-    //   const update_array_result = await user.findByIdAndUpdate(
-    //     req.query.user_token,
-    //     { power_socket: power_socket_array },
-    //     options
-    //   );
-    //   res.status(200).json(update_array_result);
-    // } else {
-    //   throw not_your_power_socket;
-    // }
+      //delete power socket from user power_socket array
+      let power_socket_array = target_user.power_socket;
+      power_socket_array.splice(index, 1);
+
+      const options = { new: true };
+      const update_array_result = await user.findByIdAndUpdate(
+        user_id,
+        { power_socket: power_socket_array },
+        options
+      );
+      res.status(200).json(update_array_result);
+    } else {
+      throw not_your_power_socket;
+    }
   } catch (error) {
     if (error == user_not_found || error == power_socket_not_found) {
       res.status(404).json({ message: error });
     } else if (error == not_your_power_socket) {
       res.status(401).json({ message: error });
+    } else if (error == delete_failed) {
+      res.status(500).json({ message: error });
     } else {
       res.status(400).json({ message: error.message });
     }
+  }
+});
+
+// delete all power sockets
+router.delete("/power_socket", async (req, res) => {
+  const user_id = req.body.user_id;
+  try {
+    // find user
+    const target_user = await user.findById(user_id);
+    if (target_user == null) {
+      throw user_not_found;
+    }
+
+    // delete power sockets from power socket table one at a time
+    const target_power_sockets = target_user.power_socket;
+    target_power_sockets.forEach(async function (power_socket_id) {
+      const delete_result = await power_socket.findByIdAndDelete(
+        power_socket_id
+      );
+      if (delete_result == null) {
+        throw delete_failed;
+      }
+    });
+
+    // empty user power_socket array
+    const options = { new: true };
+    const update_array_result = await user.findByIdAndUpdate(
+      user_id,
+      { power_socket: [] },
+      options
+    );
+    if(update_array_result == null){
+      throw delete_failed
+    }
+    else{
+      res.status(200).json(update_array_result);
+    }
+  } catch (error) {
+    if (error == user_not_found) {
+      res.status(404).json({ message: error });
+    } else if (error == delete_failed) {
+      res.status(500).json({ message: error });
+    } 
   }
 });
