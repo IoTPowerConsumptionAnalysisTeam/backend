@@ -14,7 +14,7 @@ const dataSchema = new mongoose.Schema({
     type: String,
   },
   power: {
-    required: true,
+    required: false,
     type: [],
   },
 });

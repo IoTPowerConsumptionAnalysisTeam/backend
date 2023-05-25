@@ -11,6 +11,7 @@ const user = require("../models/user");
 const not_your_power_socket = "This isn't your power socket";
 const user_not_found = "user not found";
 const power_socket_not_found = "power socket not found";
+const category_not_found = "category not found";
 const update_failed = "update failed due to internal server error";
 const delete_failed = "delete failed due to internal server error";
 
@@ -284,10 +285,9 @@ router.delete("/power_socket", async (req, res) => {
       { power_socket: [] },
       options
     );
-    if(update_array_result == null){
-      throw delete_failed
-    }
-    else{
+    if (update_array_result == null) {
+      throw delete_failed;
+    } else {
       res.status(200).json(update_array_result);
     }
   } catch (error) {
@@ -295,6 +295,114 @@ router.delete("/power_socket", async (req, res) => {
       res.status(404).json({ message: error });
     } else if (error == delete_failed) {
       res.status(500).json({ message: error });
-    } 
+    }
   }
+});
+
+// add a category
+router.post("/category", async (req, res) => {
+  const user_id = req.body.user_id;
+  const new_category = req.body.new_category;
+  const options = { new: true };
+  try {
+    // find user
+    const target_user = await user.findById(user_id);
+    if (target_user == null) {
+      throw user_not_found;
+    }
+    // update category array
+    if (target_user.category != undefined) {
+      target_user.category.push(new_category);
+    } else {
+      categories = [new_category];
+    }
+
+    const result = await user.findByIdAndUpdate(
+      user_id,
+      { category: target_user.category },
+      options
+    );
+    if (result == null) {
+      throw update_failed;
+    } else {
+      res.status(200).json(result);
+    }
+  } catch (error) {
+    if (error == user_not_found) {
+      res.status(404).json({ message: error });
+    } else if (error == update_failed) {
+      res.status(500).json({ message: error });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+// get all categories
+router.get("/category", async (req, res) => {
+  const user_id = req.body.user_id;
+  try {
+    // find user
+    const target_user = await user.findById(user_id);
+    if (target_user == null) {
+      throw user_not_found;
+    }
+
+    // update category array
+    let categories = target_user.category;
+    res.status(200).json(categories);
+  } catch (error) {
+    if (error == user_not_found) {
+      res.status(404).json({ message: error });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+// get one category index
+router.get("/category/:name", async (req, res) => {
+  const user_id = req.body.user_id;
+  const target_category = req.params.name;
+  try {
+    // find user
+    const target_user = await user.findById(user_id);
+    if (target_user == null) {
+      throw user_not_found;
+    }
+
+    // find category index
+    let categories = target_user.category;
+    let notfound = 1;
+    for (let i = 0; i < categories.length; i++) {
+      if (categories[i] == target_category) {
+        res.status(200).json({"index":i});
+        notfound = 0;
+      }
+    }
+    if (notfound) {
+      throw category_not_found;
+    }
+  } catch (error) {
+    if (error == user_not_found || error == category_not_found) {
+      res.status(404).json({ message: error });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+// edit a category
+
+// delete one category
+
+// delete all categories
+
+// post power socket consumption data
+router.post("/power_socket", async (req, res) => {
+  const user_id = req.body.user_id;
+  const power_socket_id = req.body.power_socket_id;
+  const start_time = req.body.start_time;
+  const end_time = req.body.end_time;
+  const consumption = req.body.consumption;
 });

@@ -5,6 +5,10 @@ const dataSchema = new mongoose.Schema({
     required: true,
     type: String,
   },
+  category: {
+    required: false,
+    type: [],
+  },
   power_socket: {
     required: false,
     type: [],
