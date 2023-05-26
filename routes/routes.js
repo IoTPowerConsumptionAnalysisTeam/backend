@@ -29,8 +29,8 @@ router.post("/user", async (req, res) => {
 });
 
 // register new power socket
-router.post("/power_socket", async (req, res) => {
-  let user_id = req.body.user_id;
+router.post("/user/:user_id/power_socket", async (req, res) => {
+  let user_id = req.params.user_id;
   const data = new power_socket({
     user: user_id,
     category: req.body.category,
@@ -72,8 +72,8 @@ router.post("/power_socket", async (req, res) => {
 });
 
 // get all power sockets
-router.get("/power_socket", async (req, res) => {
-  const user_id = req.body.user_id;
+router.get("/user/:user_id/power_socket", async (req, res) => {
+  const user_id = req.params.user_id;
   try {
     // find user
     const target_user = await user.findById(user_id);
@@ -95,8 +95,8 @@ router.get("/power_socket", async (req, res) => {
 });
 
 // get one power socket
-router.get("/power_socket/:id", async (req, res) => {
-  const user_id = req.body.user_id;
+router.get("/user/:user_id/power_socket/:id", async (req, res) => {
+  const user_id = req.params.user_id;
   const power_socket_id = req.params.id;
   try {
     // find power socket
@@ -139,8 +139,8 @@ router.get("/power_socket/:id", async (req, res) => {
 });
 
 // edit power socket
-router.patch("/power_socket/:id", async (req, res) => {
-  const user_id = req.body.user_id;
+router.patch("/user/:user_id/power_socket/:id", async (req, res) => {
+  const user_id = req.params.user_id;
   let newData = req.body;
   delete newData.user;
   const power_socket_id = req.params.id;
@@ -192,8 +192,8 @@ router.patch("/power_socket/:id", async (req, res) => {
 });
 
 // delete one power socket
-router.delete("/power_socket/:id", async (req, res) => {
-  const user_id = req.body.user_id;
+router.delete("/user/:user_id/power_socket/:id", async (req, res) => {
+  const user_id = req.params.user_id;
   const power_socket_id = req.params.id;
   try {
     // find power socket
@@ -258,8 +258,8 @@ router.delete("/power_socket/:id", async (req, res) => {
 });
 
 // delete all power sockets
-router.delete("/power_socket", async (req, res) => {
-  const user_id = req.body.user_id;
+router.delete("/user/:user_id/power_socket", async (req, res) => {
+  const user_id = req.params.user_id;
   try {
     // find user
     const target_user = await user.findById(user_id);
