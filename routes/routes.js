@@ -665,8 +665,11 @@ router.get("/user/:user_id/consumption", async (req, res) => {
         );
         const number_of_power = current_power_socket.power.length;
         for (let j = 0; j < number_of_power; j++) {
-          const current_power = current_power_socket.power[j]
-          if(current_power.start_time >= start_time && current_power.end_time<= end_time){
+          const current_power = current_power_socket.power[j];
+          if (
+            current_power.start_time >= start_time &&
+            current_power.end_time <= end_time
+          ) {
             total_comsumption += current_power.consumption;
           }
         }
@@ -674,10 +677,72 @@ router.get("/user/:user_id/consumption", async (req, res) => {
     }
     res.status(200).json(total_comsumption);
   } catch (error) {
-    if (error == user_not_found ) {
+    if (error == user_not_found) {
       res.status(404).json({ message: error });
     } else {
       res.status(400).json({ message: error.message });
     }
   }
 });
+
+// get total comsumption of a power socket
+router.get(
+  "/user/:user_id/power_socket/:power_socket_id/consumption",
+  async (req, res) => {
+    const user_id = req.params.user_id;
+    const power_socket_id = req.params.power_socket_id;
+    const start_time = req.body.start_time;
+    const end_time = req.body.end_time;
+    try {
+      // find user
+      const target_user = await user.findById(user_id);
+      if (target_user == null) {
+        throw user_not_found;
+      }
+
+      // find power socket
+      const target_power_socket = await power_socket.findById(power_socket_id);
+      if (target_power_socket == null) {
+        throw power_socket_not_found;
+      }
+
+      // verify power_socket is owned by the user
+      let verified = false;
+      let power_socket_array = target_user.power_socket;
+      let array_length = power_socket_array.length;
+      for (let i = 0; i < array_length; i++) {
+        if (power_socket_array[i] == power_socket_id) {
+          verified = true;
+          break;
+        }
+      }
+
+      if (verified) {
+        // calculate comsumption
+        let total_comsumption = 0;
+        const number_of_power = target_power_socket.power.length;
+
+        for (let i = 0; i < number_of_power; i++) {
+          const current_power = target_power_socket.power[i];
+          if (
+            current_power.start_time >= start_time &&
+            current_power.end_time <= end_time
+          ) {
+            total_comsumption += current_power.consumption;
+          }
+        }
+        res.status(200).json(total_comsumption);
+      } else {
+        throw not_your_power_socket;
+      }
+    } catch (error) {
+      if (error == user_not_found || error == power_socket_not_found) {
+        res.status(404).json({ message: error });
+      } else if (error == not_your_power_socket) {
+        res.status(401).json({ message: error });
+      } else {
+        res.status(400).json({ message: error.message });
+      }
+    }
+  }
+);
