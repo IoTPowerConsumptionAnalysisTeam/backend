@@ -376,7 +376,7 @@ router.get("/category/:name", async (req, res) => {
     let notfound = 1;
     for (let i = 0; i < categories.length; i++) {
       if (categories[i] == target_category) {
-        res.status(200).json({"index":i});
+        res.status(200).json({ index: i });
         notfound = 0;
       }
     }
@@ -393,8 +393,135 @@ router.get("/category/:name", async (req, res) => {
 });
 
 // edit a category
+router.patch("/category/:id", async (req, res) => {
+  const user_id = req.params.id;
+  try {
+    // find user
+    const target_user = await user.findById(user_id);
+    if (target_user == null) {
+      throw user_not_found;
+    }
+    if (target_user.category.length == 0) {
+      throw category_not_found;
+    }
+    let not_found = 1,
+      target_index = -1;
+    const origin_name = req.body.origin_name;
+    const new_name = req.body.new_name;
+    for (let i = 0; i < target_user.category.length; i++) {
+      if (target_user.category[i] == origin_name) {
+        target_index = i;
+        not_found = 0;
+      }
+    }
+    if (not_found) {
+      throw category_not_found;
+    } else {
+      // edit name in user category array
+      target_user.category[target_index] = new_name;
+      const options = { new: true };
+      const result = await user.findByIdAndUpdate(
+        user_id,
+        { category: target_user.category },
+        options
+      );
+      if (result == null) {
+        throw update_failed;
+      }
+
+      // edit all power sockets to new category name
+      for (let i = 0; i < target_user.power_socket.length; i++) {
+        let power_socket_id = target_user.power_socket[i];
+        let current_power_socket = await power_socket.findById(power_socket_id);
+        if (current_power_socket.category == origin_name) {
+          const one_by_one_result = await power_socket.findByIdAndUpdate(
+            power_socket_id,
+            { category: new_name },
+            options
+          );
+          if (one_by_one_result == null) {
+            throw update_failed;
+          }
+        }
+      }
+      res.status(200).json(result);
+    }
+  } catch (error) {
+    if (error == user_not_found || error == category_not_found) {
+      res.status(404).json({ message: error });
+    } else if (error == update_failed) {
+      res.status(500).json({ message: error });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
 
 // delete one category
+router.delete("/category/:id", async (req, res) => {
+  const user_id = req.params.id;
+  try {
+    // find user
+    const target_user = await user.findById(user_id);
+    if (target_user == null) {
+      throw user_not_found;
+    }
+
+    // find target category
+    if (target_user.category.length == 0) {
+      throw category_not_found;
+    }
+    let not_found = 1,
+      target_index = -1;
+    const category_name = req.body.category_name;
+    for (let i = 0; i < target_user.category.length; i++) {
+      if (target_user.category[i] == category_name) {
+        target_index = i;
+        not_found = 0;
+      }
+    }
+    if (not_found) {
+      throw category_not_found;
+    } else {
+      // remove category in user category array
+      target_user.category.splice(target_index, 1);
+      const options = { new: true };
+      const result = await user.findByIdAndUpdate(
+        user_id,
+        { category: target_user.category },
+        options
+      );
+      if (result == null) {
+        throw update_failed;
+      }
+
+      // edit all power sockets to no category
+      for (let i = 0; i < target_user.power_socket.length; i++) {
+        let power_socket_id = target_user.power_socket[i];
+        let current_power_socket = await power_socket.findById(power_socket_id);
+        if (current_power_socket.category == category_name) {
+          const one_by_one_result = await power_socket.findByIdAndUpdate(
+            power_socket_id,
+            { category: "" },
+            options
+          );
+          if (one_by_one_result == null) {
+            throw update_failed;
+          }
+        }
+      }
+      res.status(200).json(result);
+    }
+  } catch (error) {
+    if (error == user_not_found || error == category_not_found) {
+      res.status(404).json({ message: error });
+    } else if (error == update_failed) {
+      res.status(500).json({ message: error });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
 
 // delete all categories
 
