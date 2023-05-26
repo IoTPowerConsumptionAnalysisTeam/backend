@@ -299,9 +299,11 @@ router.delete("/user/:user_id/power_socket", async (req, res) => {
   }
 });
 
+//__________________CATEGORY______________________________________
+
 // add a category
-router.post("/category", async (req, res) => {
-  const user_id = req.body.user_id;
+router.post("/user/:user_id/category", async (req, res) => {
+  const user_id = req.params.user_id;
   const new_category = req.body.new_category;
   const options = { new: true };
   try {
@@ -339,8 +341,8 @@ router.post("/category", async (req, res) => {
 });
 
 // get all categories
-router.get("/category", async (req, res) => {
-  const user_id = req.body.user_id;
+router.get("/user/:user_id/category", async (req, res) => {
+  const user_id = req.params.user_id;
   try {
     // find user
     const target_user = await user.findById(user_id);
@@ -361,9 +363,9 @@ router.get("/category", async (req, res) => {
 });
 
 // get one category index
-router.get("/category/:name", async (req, res) => {
-  const user_id = req.body.user_id;
-  const target_category = req.params.name;
+router.get("/user/:user_id/category/:category_name", async (req, res) => {
+  const user_id = req.params.user_id;
+  const target_category = req.params.category_name;
   try {
     // find user
     const target_user = await user.findById(user_id);
@@ -393,8 +395,8 @@ router.get("/category/:name", async (req, res) => {
 });
 
 // edit a category
-router.patch("/category/:id", async (req, res) => {
-  const user_id = req.params.id;
+router.patch("/user/:user_id/category", async (req, res) => {
+  const user_id = req.params.user_id;
   try {
     // find user
     const target_user = await user.findById(user_id);
@@ -458,8 +460,8 @@ router.patch("/category/:id", async (req, res) => {
 });
 
 // delete one category
-router.delete("/category/:id", async (req, res) => {
-  const user_id = req.params.id;
+router.delete("/user/:user_id/category/:category_name", async (req, res) => {
+  const user_id = req.params.user_id;
   try {
     // find user
     const target_user = await user.findById(user_id);
@@ -473,7 +475,7 @@ router.delete("/category/:id", async (req, res) => {
     }
     let not_found = 1,
       target_index = -1;
-    const category_name = req.body.category_name;
+    const category_name = req.params.category_name;
     for (let i = 0; i < target_user.category.length; i++) {
       if (target_user.category[i] == category_name) {
         target_index = i;
@@ -524,6 +526,50 @@ router.delete("/category/:id", async (req, res) => {
 });
 
 // delete all categories
+router.delete("/user/:user_id/category", async (req, res) => {
+  const user_id = req.params.user_id;
+  try {
+    // find user
+    const target_user = await user.findById(user_id);
+    if (target_user == null) {
+      throw user_not_found;
+    }
+
+    // remove all categories in user category array
+    target_user.category.length = 0;
+    const options = { new: true };
+    const result = await user.findByIdAndUpdate(
+      user_id,
+      { category: target_user.category },
+      options
+    );
+    if (result == null) {
+      throw update_failed;
+    }
+
+    // edit all power sockets to no category
+    for (let i = 0; i < target_user.power_socket.length; i++) {
+      let power_socket_id = target_user.power_socket[i];
+      const one_by_one_result = await power_socket.findByIdAndUpdate(
+        power_socket_id,
+        { category: "" },
+        options
+      );
+      if (one_by_one_result == null) {
+        throw update_failed;
+      }
+    }
+    res.status(200).json(result);
+  } catch (error) {
+    if (error == user_not_found || error == category_not_found) {
+      res.status(404).json({ message: error });
+    } else if (error == update_failed) {
+      res.status(500).json({ message: error });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
 
 // post power socket consumption data
 router.post("/power_socket", async (req, res) => {
