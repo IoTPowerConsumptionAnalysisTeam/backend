@@ -802,3 +802,193 @@ router.get(
     }
   }
 );
+
+function power_bill(power_consumption, time) {
+  var date = new Date(time * 1000);
+  let month = date.getMonth;
+  let range = [240, 660, 1000, 1400, 2000];
+  let rate = [];
+  if (month >= 6 && month <= 9) {
+    rate = [1.63, 2.38, 3.52, 4.8, 5.83, 7.69];
+  } else {
+    rate = [1.63, 2.1, 2.89, 3.94, 4.74, 6.03];
+  }
+  let power_bill = 0;
+  let previous_range = 0;
+  for (let i = 0; i < range.length; i++) {
+    if (power_consumption > range[i]) {
+      power_bill += rate[i] * (range[i] - previous_range);
+    } else {
+      power_bill += rate[i] * (power_consumption - previous_range);
+      return power_bill;
+    }
+    previous_range = range[i];
+  }
+  power_bill += rate[rate.length - 1] * (power_consumption - previous_range);
+  return power_bill;
+}
+
+// get total power bill
+router.get(
+  "/user/:user_id/bill/start/:start_time/end/:end_time",
+  async (req, res) => {
+    const user_id = req.params.user_id;
+    const start_time = req.params.start_time;
+    const end_time = req.params.end_time;
+    try {
+      // find user
+      const target_user = await user.findById(user_id);
+      if (target_user == null) {
+        throw user_not_found;
+      }
+      // calculate comsumption
+      let total_comsumption = 0,
+        no_power_socket = false;
+      if (target_user.power_socket.length == 0) {
+        no_power_socket = true;
+      }
+      if (no_power_socket) {
+        total_comsumption = 0;
+      } else {
+        const power_sockets = target_user.power_socket;
+        for (let i = 0; i < power_sockets.length; i++) {
+          const current_power_socket = await power_socket.findById(
+            power_sockets[i]
+          );
+          const number_of_power = current_power_socket.power.length;
+          for (let j = 0; j < number_of_power; j++) {
+            const current_power = current_power_socket.power[j];
+            if (
+              current_power.start_time >= start_time &&
+              current_power.end_time <= end_time
+            ) {
+              total_comsumption += current_power.consumption;
+            }
+          }
+        }
+      }
+      res.status(200).json(power_bill(total_comsumption, start_time));
+    } catch (error) {
+      if (error == user_not_found) {
+        res.status(404).json({ message: error });
+      } else {
+        res.status(400).json({ message: error.message });
+      }
+    }
+  }
+);
+
+// get power socket power bill
+router.get(
+  "/user/:user_id/power_socket/:power_socket_id/bill/start/:start_time/end/:end_time",
+  async (req, res) => {
+    const user_id = req.params.user_id;
+    const power_socket_id = req.params.power_socket_id;
+    const start_time = req.params.start_time;
+    const end_time = req.params.end_time;
+    try {
+      // find user
+      const target_user = await user.findById(user_id);
+      if (target_user == null) {
+        throw user_not_found;
+      }
+
+      // find power socket
+      const target_power_socket = await power_socket.findById(power_socket_id);
+      if (target_power_socket == null) {
+        throw power_socket_not_found;
+      }
+
+      // verify power_socket is owned by the user
+      let verified = false;
+      let power_socket_array = target_user.power_socket;
+      let array_length = power_socket_array.length;
+      for (let i = 0; i < array_length; i++) {
+        if (power_socket_array[i] == power_socket_id) {
+          verified = true;
+          break;
+        }
+      }
+
+      if (verified) {
+        // calculate comsumption
+        let total_comsumption = 0;
+        const number_of_power = target_power_socket.power.length;
+
+        for (let i = 0; i < number_of_power; i++) {
+          const current_power = target_power_socket.power[i];
+          if (
+            current_power.start_time >= start_time &&
+            current_power.end_time <= end_time
+          ) {
+            total_comsumption += current_power.consumption;
+          }
+        }
+        res.status(200).json(power_bill(total_comsumption, start_time));
+      } else {
+        throw not_your_power_socket;
+      }
+    } catch (error) {
+      if (error == user_not_found || error == power_socket_not_found) {
+        res.status(404).json({ message: error });
+      } else if (error == not_your_power_socket) {
+        res.status(401).json({ message: error });
+      } else {
+        res.status(400).json({ message: error.message });
+      }
+    }
+  }
+);
+
+// get category consumption
+router.get(
+  "/user/:user_id/category/:category_name/bill/start/:start_time/end/:end_time",
+  async (req, res) => {
+    const user_id = req.params.user_id;
+    const category_name = req.params.category_name;
+    const start_time = req.params.start_time;
+    const end_time = req.params.end_time;
+    try {
+      // find user
+      const target_user = await user.findById(user_id);
+      if (target_user == null) {
+        throw user_not_found;
+      }
+      // calculate comsumption
+      let total_comsumption = 0,
+        no_power_socket = false;
+      if (target_user.power_socket.length == 0) {
+        no_power_socket = true;
+      }
+      if (no_power_socket) {
+        total_comsumption = 0;
+      } else {
+        const power_sockets = target_user.power_socket;
+        for (let i = 0; i < power_sockets.length; i++) {
+          const current_power_socket = await power_socket.findById(
+            power_sockets[i]
+          );
+          const number_of_power = current_power_socket.power.length;
+          if (current_power_socket.category == category_name) {
+            for (let j = 0; j < number_of_power; j++) {
+              const current_power = current_power_socket.power[j];
+              if (
+                current_power.start_time >= start_time &&
+                current_power.end_time <= end_time
+              ) {
+                total_comsumption += current_power.consumption;
+              }
+            }
+          }
+        }
+      }
+      res.status(200).json(power_bill(total_comsumption, start_time));
+    } catch (error) {
+      if (error == user_not_found) {
+        res.status(404).json({ message: error });
+      } else {
+        res.status(400).json({ message: error.message });
+      }
+    }
+  }
+);
