@@ -749,3 +749,56 @@ router.get(
     }
   }
 );
+
+// get category consumption
+router.get(
+  "/user/:user_id/category/:category_name/consumption/start/:start_time/end/:end_time",
+  async (req, res) => {
+    const user_id = req.params.user_id;
+    const category_name = req.params.category_name;
+    const start_time = req.params.start_time;
+    const end_time = req.params.end_time;
+    try {
+      // find user
+      const target_user = await user.findById(user_id);
+      if (target_user == null) {
+        throw user_not_found;
+      }
+      // calculate comsumption
+      let total_comsumption = 0,
+        no_power_socket = false;
+      if (target_user.power_socket.length == 0) {
+        no_power_socket = true;
+      }
+      if (no_power_socket) {
+        total_comsumption = 0;
+      } else {
+        const power_sockets = target_user.power_socket;
+        for (let i = 0; i < power_sockets.length; i++) {
+          const current_power_socket = await power_socket.findById(
+            power_sockets[i]
+          );
+          const number_of_power = current_power_socket.power.length;
+          if (current_power_socket.category == category_name) {
+            for (let j = 0; j < number_of_power; j++) {
+              const current_power = current_power_socket.power[j];
+              if (
+                current_power.start_time >= start_time &&
+                current_power.end_time <= end_time
+              ) {
+                total_comsumption += current_power.consumption;
+              }
+            }
+          }
+        }
+      }
+      res.status(200).json(total_comsumption);
+    } catch (error) {
+      if (error == user_not_found) {
+        res.status(404).json({ message: error });
+      } else {
+        res.status(400).json({ message: error.message });
+      }
+    }
+  }
+);
