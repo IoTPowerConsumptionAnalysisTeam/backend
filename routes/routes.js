@@ -43,7 +43,7 @@ async function findUser(req, res, next) {
 }
 
 // register new power socket
-router.post("/user/:user_id/power_socket", findUser,async (req, res) => {
+router.post("/user/:user_id/power_socket", findUser, async (req, res) => {
   let user_id = req.params.user_id;
   const data = new power_socket({
     user: user_id,
@@ -78,18 +78,18 @@ router.post("/user/:user_id/power_socket", findUser,async (req, res) => {
 });
 
 // get all power sockets
-router.get("/user/:user_id/power_socket", findUser,async (req, res) => {
+router.get("/user/:user_id/power_socket", findUser, async (req, res) => {
   try {
     // return power_socket array
     let power_socket_array = req.target_user.power_socket;
     res.status(200).json(power_socket_array);
   } catch (error) {
-      res.status(400).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 });
 
 // get one power socket
-router.get("/user/:user_id/power_socket/:id", findUser,async (req, res) => {
+router.get("/user/:user_id/power_socket/:id", findUser, async (req, res) => {
   const power_socket_id = req.params.id;
   try {
     // find power socket
@@ -219,7 +219,7 @@ router.delete("/user/:user_id/power_socket/:id", findUser, async (req, res) => {
       throw not_your_power_socket;
     }
   } catch (error) {
-    if ( error == power_socket_not_found) {
+    if (error == power_socket_not_found) {
       res.status(404).json({ message: error });
     } else if (error == not_your_power_socket) {
       res.status(401).json({ message: error });
@@ -245,7 +245,7 @@ router.delete("/user/:user_id/power_socket", findUser, async (req, res) => {
         throw delete_failed;
       }
     });
-    
+
     // empty user power_socket array
     const options = { new: true };
     const update_array_result = await user.findByIdAndUpdate(
@@ -270,26 +270,21 @@ router.delete("/user/:user_id/power_socket", findUser, async (req, res) => {
 //__________________CATEGORY______________________________________
 
 // add a category
-router.post("/user/:user_id/category", async (req, res) => {
+router.post("/user/:user_id/category", findUser, async (req, res) => {
   const user_id = req.params.user_id;
   const new_category = req.body.new_category;
   const options = { new: true };
   try {
-    // find user
-    const target_user = await user.findById(user_id);
-    if (target_user == null) {
-      throw user_not_found;
-    }
     // update category array
-    if (target_user.category != undefined) {
-      target_user.category.push(new_category);
+    if (req.target_user.category != undefined) {
+      req.target_user.category.push(new_category);
     } else {
       categories = [new_category];
     }
 
     const result = await user.findByIdAndUpdate(
       user_id,
-      { category: target_user.category },
+      { category: req.target_user.category },
       options
     );
     if (result == null) {
@@ -298,9 +293,7 @@ router.post("/user/:user_id/category", async (req, res) => {
       res.status(200).json(result);
     }
   } catch (error) {
-    if (error == user_not_found) {
-      res.status(404).json({ message: error });
-    } else if (error == update_failed) {
+    if (error == update_failed) {
       res.status(500).json({ message: error });
     } else {
       res.status(400).json({ message: error.message });
@@ -309,40 +302,22 @@ router.post("/user/:user_id/category", async (req, res) => {
 });
 
 // get all categories
-router.get("/user/:user_id/category", async (req, res) => {
-  const user_id = req.params.user_id;
+router.get("/user/:user_id/category", findUser, async (req, res) => {
   try {
-    // find user
-    const target_user = await user.findById(user_id);
-    if (target_user == null) {
-      throw user_not_found;
-    }
-
     // update category array
-    let categories = target_user.category;
+    let categories = req.target_user.category;
     res.status(200).json(categories);
   } catch (error) {
-    if (error == user_not_found) {
-      res.status(404).json({ message: error });
-    } else {
-      res.status(400).json({ message: error.message });
-    }
+    res.status(400).json({ message: error.message });
   }
 });
 
 // get one category index
-router.get("/user/:user_id/category/:category_name", async (req, res) => {
-  const user_id = req.params.user_id;
+router.get("/user/:user_id/category/:category_name", findUser, async (req, res) => {
   const target_category = req.params.category_name;
   try {
-    // find user
-    const target_user = await user.findById(user_id);
-    if (target_user == null) {
-      throw user_not_found;
-    }
-
     // find category index
-    let categories = target_user.category;
+    let categories = req.target_user.category;
     let notfound = 1;
     for (let i = 0; i < categories.length; i++) {
       if (categories[i] == target_category) {
@@ -354,7 +329,7 @@ router.get("/user/:user_id/category/:category_name", async (req, res) => {
       throw category_not_found;
     }
   } catch (error) {
-    if (error == user_not_found || error == category_not_found) {
+    if (error == category_not_found) {
       res.status(404).json({ message: error });
     } else {
       res.status(400).json({ message: error.message });
@@ -363,23 +338,18 @@ router.get("/user/:user_id/category/:category_name", async (req, res) => {
 });
 
 // edit a category
-router.patch("/user/:user_id/category", async (req, res) => {
+router.patch("/user/:user_id/category", findUser, async (req, res) => {
   const user_id = req.params.user_id;
   try {
-    // find user
-    const target_user = await user.findById(user_id);
-    if (target_user == null) {
-      throw user_not_found;
-    }
-    if (target_user.category.length == 0) {
+    if (req.target_user.category.length == 0) {
       throw category_not_found;
     }
     let not_found = 1,
       target_index = -1;
     const origin_name = req.body.origin_name;
     const new_name = req.body.new_name;
-    for (let i = 0; i < target_user.category.length; i++) {
-      if (target_user.category[i] == origin_name) {
+    for (let i = 0; i < req.target_user.category.length; i++) {
+      if (req.target_user.category[i] == origin_name) {
         target_index = i;
         not_found = 0;
       }
@@ -388,11 +358,11 @@ router.patch("/user/:user_id/category", async (req, res) => {
       throw category_not_found;
     } else {
       // edit name in user category array
-      target_user.category[target_index] = new_name;
+      req.target_user.category[target_index] = new_name;
       const options = { new: true };
       const result = await user.findByIdAndUpdate(
         user_id,
-        { category: target_user.category },
+        { category: req.target_user.category },
         options
       );
       if (result == null) {
@@ -400,8 +370,8 @@ router.patch("/user/:user_id/category", async (req, res) => {
       }
 
       // edit all power sockets to new category name
-      for (let i = 0; i < target_user.power_socket.length; i++) {
-        let power_socket_id = target_user.power_socket[i];
+      for (let i = 0; i < req.target_user.power_socket.length; i++) {
+        let power_socket_id = req.target_user.power_socket[i];
         let current_power_socket = await power_socket.findById(power_socket_id);
         if (current_power_socket.category == origin_name) {
           const one_by_one_result = await power_socket.findByIdAndUpdate(
@@ -417,7 +387,7 @@ router.patch("/user/:user_id/category", async (req, res) => {
       res.status(200).json(result);
     }
   } catch (error) {
-    if (error == user_not_found || error == category_not_found) {
+    if (error == category_not_found) {
       res.status(404).json({ message: error });
     } else if (error == update_failed) {
       res.status(500).json({ message: error });
@@ -428,24 +398,18 @@ router.patch("/user/:user_id/category", async (req, res) => {
 });
 
 // delete one category
-router.delete("/user/:user_id/category/:category_name", async (req, res) => {
+router.delete("/user/:user_id/category/:category_name", findUser, async (req, res) => {
   const user_id = req.params.user_id;
   try {
-    // find user
-    const target_user = await user.findById(user_id);
-    if (target_user == null) {
-      throw user_not_found;
-    }
-
     // find target category
-    if (target_user.category.length == 0) {
+    if (req.target_user.category.length == 0) {
       throw category_not_found;
     }
     let not_found = 1,
       target_index = -1;
     const category_name = req.params.category_name;
-    for (let i = 0; i < target_user.category.length; i++) {
-      if (target_user.category[i] == category_name) {
+    for (let i = 0; i < req.target_user.category.length; i++) {
+      if (req.target_user.category[i] == category_name) {
         target_index = i;
         not_found = 0;
       }
@@ -454,11 +418,11 @@ router.delete("/user/:user_id/category/:category_name", async (req, res) => {
       throw category_not_found;
     } else {
       // remove category in user category array
-      target_user.category.splice(target_index, 1);
+      req.target_user.category.splice(target_index, 1);
       const options = { new: true };
       const result = await user.findByIdAndUpdate(
         user_id,
-        { category: target_user.category },
+        { category: req.target_user.category },
         options
       );
       if (result == null) {
@@ -466,8 +430,8 @@ router.delete("/user/:user_id/category/:category_name", async (req, res) => {
       }
 
       // edit all power sockets to no category
-      for (let i = 0; i < target_user.power_socket.length; i++) {
-        let power_socket_id = target_user.power_socket[i];
+      for (let i = 0; i < req.target_user.power_socket.length; i++) {
+        let power_socket_id = req.target_user.power_socket[i];
         let current_power_socket = await power_socket.findById(power_socket_id);
         if (current_power_socket.category == category_name) {
           const one_by_one_result = await power_socket.findByIdAndUpdate(
@@ -494,21 +458,15 @@ router.delete("/user/:user_id/category/:category_name", async (req, res) => {
 });
 
 // delete all categories
-router.delete("/user/:user_id/category", async (req, res) => {
+router.delete("/user/:user_id/category", findUser, async (req, res) => {
   const user_id = req.params.user_id;
   try {
-    // find user
-    const target_user = await user.findById(user_id);
-    if (target_user == null) {
-      throw user_not_found;
-    }
-
     // remove all categories in user category array
-    target_user.category.length = 0;
+    req.target_user.category.length = 0;
     const options = { new: true };
     const result = await user.findByIdAndUpdate(
       user_id,
-      { category: target_user.category },
+      { category: req.target_user.category },
       options
     );
     if (result == null) {
@@ -516,8 +474,8 @@ router.delete("/user/:user_id/category", async (req, res) => {
     }
 
     // edit all power sockets to no category
-    for (let i = 0; i < target_user.power_socket.length; i++) {
-      let power_socket_id = target_user.power_socket[i];
+    for (let i = 0; i < req.target_user.power_socket.length; i++) {
+      let power_socket_id = req.target_user.power_socket[i];
       const one_by_one_result = await power_socket.findByIdAndUpdate(
         power_socket_id,
         { category: "" },
@@ -529,7 +487,7 @@ router.delete("/user/:user_id/category", async (req, res) => {
     }
     res.status(200).json(result);
   } catch (error) {
-    if (error == user_not_found || error == category_not_found) {
+    if (error == category_not_found) {
       res.status(404).json({ message: error });
     } else if (error == update_failed) {
       res.status(500).json({ message: error });
@@ -538,6 +496,8 @@ router.delete("/user/:user_id/category", async (req, res) => {
     }
   }
 });
+
+//__________________POWER______________________________________
 
 class Power {
   constructor(start_time, end_time, consumption) {
