@@ -463,7 +463,7 @@ router.delete(
         res.status(200).json(result);
       }
     } catch (error) {
-      if (error == user_not_found || error == category_not_found) {
+      if (error == category_not_found) {
         res.status(404).json({ message: error });
       } else if (error == update_failed) {
         res.status(500).json({ message: error });
