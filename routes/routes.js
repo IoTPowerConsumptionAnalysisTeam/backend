@@ -313,29 +313,33 @@ router.get("/user/:user_id/category", findUser, async (req, res) => {
 });
 
 // get one category index
-router.get("/user/:user_id/category/:category_name", findUser, async (req, res) => {
-  const target_category = req.params.category_name;
-  try {
-    // find category index
-    let categories = req.target_user.category;
-    let notfound = 1;
-    for (let i = 0; i < categories.length; i++) {
-      if (categories[i] == target_category) {
-        res.status(200).json({ index: i });
-        notfound = 0;
+router.get(
+  "/user/:user_id/category/:category_name",
+  findUser,
+  async (req, res) => {
+    const target_category = req.params.category_name;
+    try {
+      // find category index
+      let categories = req.target_user.category;
+      let notfound = 1;
+      for (let i = 0; i < categories.length; i++) {
+        if (categories[i] == target_category) {
+          res.status(200).json({ index: i });
+          notfound = 0;
+        }
+      }
+      if (notfound) {
+        throw category_not_found;
+      }
+    } catch (error) {
+      if (error == category_not_found) {
+        res.status(404).json({ message: error });
+      } else {
+        res.status(400).json({ message: error.message });
       }
     }
-    if (notfound) {
-      throw category_not_found;
-    }
-  } catch (error) {
-    if (error == category_not_found) {
-      res.status(404).json({ message: error });
-    } else {
-      res.status(400).json({ message: error.message });
-    }
   }
-});
+);
 
 // edit a category
 router.patch("/user/:user_id/category", findUser, async (req, res) => {
@@ -398,64 +402,70 @@ router.patch("/user/:user_id/category", findUser, async (req, res) => {
 });
 
 // delete one category
-router.delete("/user/:user_id/category/:category_name", findUser, async (req, res) => {
-  const user_id = req.params.user_id;
-  try {
-    // find target category
-    if (req.target_user.category.length == 0) {
-      throw category_not_found;
-    }
-    let not_found = 1,
-      target_index = -1;
-    const category_name = req.params.category_name;
-    for (let i = 0; i < req.target_user.category.length; i++) {
-      if (req.target_user.category[i] == category_name) {
-        target_index = i;
-        not_found = 0;
+router.delete(
+  "/user/:user_id/category/:category_name",
+  findUser,
+  async (req, res) => {
+    const user_id = req.params.user_id;
+    try {
+      // find target category
+      if (req.target_user.category.length == 0) {
+        throw category_not_found;
       }
-    }
-    if (not_found) {
-      throw category_not_found;
-    } else {
-      // remove category in user category array
-      req.target_user.category.splice(target_index, 1);
-      const options = { new: true };
-      const result = await user.findByIdAndUpdate(
-        user_id,
-        { category: req.target_user.category },
-        options
-      );
-      if (result == null) {
-        throw update_failed;
-      }
-
-      // edit all power sockets to no category
-      for (let i = 0; i < req.target_user.power_socket.length; i++) {
-        let power_socket_id = req.target_user.power_socket[i];
-        let current_power_socket = await power_socket.findById(power_socket_id);
-        if (current_power_socket.category == category_name) {
-          const one_by_one_result = await power_socket.findByIdAndUpdate(
-            power_socket_id,
-            { category: "" },
-            options
-          );
-          if (one_by_one_result == null) {
-            throw update_failed;
-          }
+      let not_found = 1,
+        target_index = -1;
+      const category_name = req.params.category_name;
+      for (let i = 0; i < req.target_user.category.length; i++) {
+        if (req.target_user.category[i] == category_name) {
+          target_index = i;
+          not_found = 0;
         }
       }
-      res.status(200).json(result);
-    }
-  } catch (error) {
-    if (error == user_not_found || error == category_not_found) {
-      res.status(404).json({ message: error });
-    } else if (error == update_failed) {
-      res.status(500).json({ message: error });
-    } else {
-      res.status(400).json({ message: error.message });
+      if (not_found) {
+        throw category_not_found;
+      } else {
+        // remove category in user category array
+        req.target_user.category.splice(target_index, 1);
+        const options = { new: true };
+        const result = await user.findByIdAndUpdate(
+          user_id,
+          { category: req.target_user.category },
+          options
+        );
+        if (result == null) {
+          throw update_failed;
+        }
+
+        // edit all power sockets to no category
+        for (let i = 0; i < req.target_user.power_socket.length; i++) {
+          let power_socket_id = req.target_user.power_socket[i];
+          let current_power_socket = await power_socket.findById(
+            power_socket_id
+          );
+          if (current_power_socket.category == category_name) {
+            const one_by_one_result = await power_socket.findByIdAndUpdate(
+              power_socket_id,
+              { category: "" },
+              options
+            );
+            if (one_by_one_result == null) {
+              throw update_failed;
+            }
+          }
+        }
+        res.status(200).json(result);
+      }
+    } catch (error) {
+      if (error == user_not_found || error == category_not_found) {
+        res.status(404).json({ message: error });
+      } else if (error == update_failed) {
+        res.status(500).json({ message: error });
+      } else {
+        res.status(400).json({ message: error.message });
+      }
     }
   }
-});
+);
 
 // delete all categories
 router.delete("/user/:user_id/category", findUser, async (req, res) => {
@@ -503,22 +513,16 @@ class Power {
   constructor(start_time, end_time, consumption) {
     this.start_time = start_time;
     this.end_time = end_time;
-    this.consumption = consumption;
+    this.consumption = parseInt(consumption);
   }
 }
 
 // post power socket consumption data
 router.post(
   "/user/:user_id/power_socket/:power_socket_id/consumption",
+  findUser,
   async (req, res) => {
-    const user_id = req.params.user_id;
     try {
-      // find user
-      const target_user = await user.findById(user_id);
-      if (target_user == null) {
-        throw user_not_found;
-      }
-
       // find power_socket
       const power_socket_id = req.params.power_socket_id;
       const target_power_socket = await power_socket.findById(power_socket_id);
@@ -528,7 +532,7 @@ router.post(
 
       // verify power_socket is owned by the user
       let verified = false;
-      let power_socket_array = target_user.power_socket;
+      let power_socket_array = req.target_user.power_socket;
       let array_length = power_socket_array.length;
       for (let i = 0; i < array_length; i++) {
         if (power_socket_array[i] == power_socket_id) {
@@ -555,7 +559,7 @@ router.post(
         throw not_your_power_socket;
       }
     } catch (error) {
-      if (error == user_not_found || error == power_socket_not_found) {
+      if (error == power_socket_not_found) {
         res.status(404).json({ message: error });
       } else if (error == not_your_power_socket) {
         res.status(401).json({ message: error });
@@ -569,26 +573,21 @@ router.post(
 // get total comsumption
 router.get(
   "/user/:user_id/consumption/start/:start_time/end/:end_time",
+  findUser,
   async (req, res) => {
-    const user_id = req.params.user_id;
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      // find user
-      const target_user = await user.findById(user_id);
-      if (target_user == null) {
-        throw user_not_found;
-      }
       // calculate comsumption
       let total_comsumption = 0,
         no_power_socket = false;
-      if (target_user.power_socket.length == 0) {
+      if (req.target_user.power_socket.length == 0) {
         no_power_socket = true;
       }
       if (no_power_socket) {
         total_comsumption = 0;
       } else {
-        const power_sockets = target_user.power_socket;
+        const power_sockets = req.target_user.power_socket;
         for (let i = 0; i < power_sockets.length; i++) {
           const current_power_socket = await power_socket.findById(
             power_sockets[i]
@@ -607,11 +606,7 @@ router.get(
       }
       res.status(200).json(total_comsumption);
     } catch (error) {
-      if (error == user_not_found) {
-        res.status(404).json({ message: error });
-      } else {
-        res.status(400).json({ message: error.message });
-      }
+      res.status(400).json({ message: error.message });
     }
   }
 );
@@ -619,18 +614,12 @@ router.get(
 // get total comsumption of a power socket
 router.get(
   "/user/:user_id/power_socket/:power_socket_id/consumption/start/:start_time/end/:end_time",
+  findUser,
   async (req, res) => {
-    const user_id = req.params.user_id;
     const power_socket_id = req.params.power_socket_id;
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      // find user
-      const target_user = await user.findById(user_id);
-      if (target_user == null) {
-        throw user_not_found;
-      }
-
       // find power socket
       const target_power_socket = await power_socket.findById(power_socket_id);
       if (target_power_socket == null) {
@@ -639,7 +628,7 @@ router.get(
 
       // verify power_socket is owned by the user
       let verified = false;
-      let power_socket_array = target_user.power_socket;
+      let power_socket_array = req.target_user.power_socket;
       let array_length = power_socket_array.length;
       for (let i = 0; i < array_length; i++) {
         if (power_socket_array[i] == power_socket_id) {
@@ -667,7 +656,7 @@ router.get(
         throw not_your_power_socket;
       }
     } catch (error) {
-      if (error == user_not_found || error == power_socket_not_found) {
+      if (error == power_socket_not_found) {
         res.status(404).json({ message: error });
       } else if (error == not_your_power_socket) {
         res.status(401).json({ message: error });
@@ -681,27 +670,22 @@ router.get(
 // get category consumption
 router.get(
   "/user/:user_id/category/:category_name/consumption/start/:start_time/end/:end_time",
+  findUser,
   async (req, res) => {
-    const user_id = req.params.user_id;
     const category_name = req.params.category_name;
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      // find user
-      const target_user = await user.findById(user_id);
-      if (target_user == null) {
-        throw user_not_found;
-      }
       // calculate comsumption
       let total_comsumption = 0,
         no_power_socket = false;
-      if (target_user.power_socket.length == 0) {
+      if (req.target_user.power_socket.length == 0) {
         no_power_socket = true;
       }
       if (no_power_socket) {
         total_comsumption = 0;
       } else {
-        const power_sockets = target_user.power_socket;
+        const power_sockets = req.target_user.power_socket;
         for (let i = 0; i < power_sockets.length; i++) {
           const current_power_socket = await power_socket.findById(
             power_sockets[i]
@@ -722,11 +706,7 @@ router.get(
       }
       res.status(200).json(total_comsumption);
     } catch (error) {
-      if (error == user_not_found) {
-        res.status(404).json({ message: error });
-      } else {
-        res.status(400).json({ message: error.message });
-      }
+      res.status(400).json({ message: error.message });
     }
   }
 );
@@ -759,26 +739,21 @@ function power_bill(power_consumption, time) {
 // get total power bill
 router.get(
   "/user/:user_id/bill/start/:start_time/end/:end_time",
+  findUser,
   async (req, res) => {
-    const user_id = req.params.user_id;
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      // find user
-      const target_user = await user.findById(user_id);
-      if (target_user == null) {
-        throw user_not_found;
-      }
       // calculate comsumption
       let total_comsumption = 0,
         no_power_socket = false;
-      if (target_user.power_socket.length == 0) {
+      if (req.target_user.power_socket.length == 0) {
         no_power_socket = true;
       }
       if (no_power_socket) {
         total_comsumption = 0;
       } else {
-        const power_sockets = target_user.power_socket;
+        const power_sockets = req.target_user.power_socket;
         for (let i = 0; i < power_sockets.length; i++) {
           const current_power_socket = await power_socket.findById(
             power_sockets[i]
@@ -797,11 +772,7 @@ router.get(
       }
       res.status(200).json(power_bill(total_comsumption, start_time));
     } catch (error) {
-      if (error == user_not_found) {
-        res.status(404).json({ message: error });
-      } else {
-        res.status(400).json({ message: error.message });
-      }
+      res.status(400).json({ message: error.message });
     }
   }
 );
@@ -809,18 +780,12 @@ router.get(
 // get power socket power bill
 router.get(
   "/user/:user_id/power_socket/:power_socket_id/bill/start/:start_time/end/:end_time",
+  findUser,
   async (req, res) => {
-    const user_id = req.params.user_id;
     const power_socket_id = req.params.power_socket_id;
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      // find user
-      const target_user = await user.findById(user_id);
-      if (target_user == null) {
-        throw user_not_found;
-      }
-
       // find power socket
       const target_power_socket = await power_socket.findById(power_socket_id);
       if (target_power_socket == null) {
@@ -829,7 +794,7 @@ router.get(
 
       // verify power_socket is owned by the user
       let verified = false;
-      let power_socket_array = target_user.power_socket;
+      let power_socket_array = req.target_user.power_socket;
       let array_length = power_socket_array.length;
       for (let i = 0; i < array_length; i++) {
         if (power_socket_array[i] == power_socket_id) {
@@ -857,7 +822,7 @@ router.get(
         throw not_your_power_socket;
       }
     } catch (error) {
-      if (error == user_not_found || error == power_socket_not_found) {
+      if (error == power_socket_not_found) {
         res.status(404).json({ message: error });
       } else if (error == not_your_power_socket) {
         res.status(401).json({ message: error });
@@ -871,27 +836,22 @@ router.get(
 // get category consumption
 router.get(
   "/user/:user_id/category/:category_name/bill/start/:start_time/end/:end_time",
+  findUser,
   async (req, res) => {
-    const user_id = req.params.user_id;
     const category_name = req.params.category_name;
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      // find user
-      const target_user = await user.findById(user_id);
-      if (target_user == null) {
-        throw user_not_found;
-      }
       // calculate comsumption
       let total_comsumption = 0,
         no_power_socket = false;
-      if (target_user.power_socket.length == 0) {
+      if (req.target_user.power_socket.length == 0) {
         no_power_socket = true;
       }
       if (no_power_socket) {
         total_comsumption = 0;
       } else {
-        const power_sockets = target_user.power_socket;
+        const power_sockets = req.target_user.power_socket;
         for (let i = 0; i < power_sockets.length; i++) {
           const current_power_socket = await power_socket.findById(
             power_sockets[i]
@@ -912,11 +872,7 @@ router.get(
       }
       res.status(200).json(power_bill(total_comsumption, start_time));
     } catch (error) {
-      if (error == user_not_found) {
-        res.status(404).json({ message: error });
-      } else {
-        res.status(400).json({ message: error.message });
-      }
+      res.status(400).json({ message: error.message });
     }
   }
 );
