@@ -104,6 +104,14 @@ async function findPowerSocket(req, res, next) {
     res.status(404).json({ error: "Power socket not found" });
   }
 }
+function verifyPowerSocketOwnership(power_socket_array, power_socket_id) {
+  for (let i = 0; i < power_socket_array.length; i++) {
+    if (power_socket_array[i] == power_socket_id) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // get one power socket
 router.get(
@@ -112,18 +120,12 @@ router.get(
   findPowerSocket,
   async (req, res) => {
     try {
-      // verify power_socket is owned by the user
-      let verified = false;
-      let power_socket_array = req.target_user.power_socket;
-      let array_length = power_socket_array.length;
-      for (let i = 0; i < array_length; i++) {
-        if (power_socket_array[i] == req.power_socket_id) {
-          verified = true;
-          break;
-        }
-      }
-
-      if (verified) {
+      if (
+        verifyPowerSocketOwnership(
+          req.target_user.power_socket,
+          req.power_socket_id
+        )
+      ) {
         res.status(200).json(req.target_power_socket);
       } else {
         throw not_your_power_socket;
@@ -149,18 +151,12 @@ router.patch(
     const power_socket_id = req.power_socket_id;
     const options = { new: true };
     try {
-      // verify power_socket is owned by the user
-      let verified = false;
-      let power_socket_array = req.target_user.power_socket;
-      let array_length = power_socket_array.length;
-      for (let i = 0; i < array_length; i++) {
-        if (power_socket_array[i] == power_socket_id) {
-          verified = true;
-          break;
-        }
-      }
-
-      if (verified) {
+      if (
+        verifyPowerSocketOwnership(
+          req.target_user.power_socket,
+          req.power_socket_id
+        )
+      ) {
         // update power socket data
         const result = await power_socket.findByIdAndUpdate(
           power_socket_id,
@@ -190,7 +186,7 @@ router.delete(
     const user_id = req.params.user_id;
     const power_socket_id = req.power_socket_id;
     try {
-      // verify power_socket is owned by the user
+      // verify power_socket is owned by the user, index can't change
       verified = false;
       let power_socket_array = req.target_user.power_socket;
       let array_length = power_socket_array.length;
@@ -531,18 +527,12 @@ router.post(
   findPowerSocket,
   async (req, res) => {
     try {
-      // verify power_socket is owned by the user
-      let verified = false;
-      let power_socket_array = req.target_user.power_socket;
-      let array_length = power_socket_array.length;
-      for (let i = 0; i < array_length; i++) {
-        if (power_socket_array[i] == req.power_socket_id) {
-          verified = true;
-          break;
-        }
-      }
-
-      if (verified) {
+      if (
+        verifyPowerSocketOwnership(
+          req.target_user.power_socket,
+          req.power_socket_id
+        )
+      ) {
         // update power_socket array
         const start_time = req.body.start_time;
         const end_time = req.body.end_time;
@@ -617,22 +607,15 @@ router.get(
   findPowerSocket,
   async (req, res) => {
     const target_power_socket = req.target_power_socket;
-    const power_socket_id = req.power_socket_id;
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      // verify power_socket is owned by the user
-      let verified = false;
-      let power_socket_array = req.target_user.power_socket;
-      let array_length = power_socket_array.length;
-      for (let i = 0; i < array_length; i++) {
-        if (power_socket_array[i] == power_socket_id) {
-          verified = true;
-          break;
-        }
-      }
-
-      if (verified) {
+      if (
+        verifyPowerSocketOwnership(
+          req.target_user.power_socket,
+          req.power_socket_id
+        )
+      ) {
         // calculate comsumption
         let total_comsumption = 0;
         const number_of_power = target_power_socket.power.length;
@@ -776,23 +759,14 @@ router.get(
   findUser,
   findPowerSocket,
   async (req, res) => {
-    const power_socket_id = req.power_socket_id;
     const target_power_socket = req.target_power_socket;
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      // verify power_socket is owned by the user
-      let verified = false;
-      let power_socket_array = req.target_user.power_socket;
-      let array_length = power_socket_array.length;
-      for (let i = 0; i < array_length; i++) {
-        if (power_socket_array[i] == power_socket_id) {
-          verified = true;
-          break;
-        }
-      }
-
-      if (verified) {
+      if (verifyPowerSocketOwnership(
+        req.target_user.power_socket,
+        req.power_socket_id
+      )) {
         // calculate comsumption
         let total_comsumption = 0;
         const number_of_power = target_power_socket.power.length;
