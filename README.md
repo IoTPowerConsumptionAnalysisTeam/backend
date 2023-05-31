@@ -22,3 +22,10 @@ remember to remove the '<' and '>' in the url
 ```bash
 npm start
 ```
+
+## AI prediction
+There are some packages that require installation
+> remember to run under administer privilege
+```bash
+pip install -r requirements.txt
+```

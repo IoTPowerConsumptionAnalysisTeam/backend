@@ -103,11 +103,9 @@ router.post("/user/:user_id/power_socket", findUser, async (req, res) => {
 
 // get all power sockets
 router.get("/user/:user_id/power_socket", findUser, async (req, res) => {
-  console.log("get socket");
   try {
     // return power_socket array
     let power_socket_array = req.target_user.power_socket;
-    console.log(power_socket_array[8]);
     res.status(200).json(power_socket_array);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -117,7 +115,6 @@ router.get("/user/:user_id/power_socket", findUser, async (req, res) => {
 async function findPowerSocket(req, res, next) {
   try {
     const power_socket_id = req.params.power_socket_id;
-    console.log(power_socket_id);
     const target_power_socket = await power_socket.findById(power_socket_id);
     if (target_power_socket == null) {
       throw power_socket_not_found;
@@ -591,11 +588,8 @@ router.get("/test", async (req, res) => {
 });
 
 async function prediction(end_time, data) {
-  console.log("prediction");
-  //let current_time = Date.now() / 1000;
-  let current_time = 1685447282;
+  let current_time = Date.now() / 1000;
   let length_for_prediction = end_time - current_time;
-  console.log("length:"+length_for_prediction)
   //Here are the option object in which arguments can be passed for the python_test.js.
   let options = {
     mode: "text",
@@ -618,7 +612,6 @@ async function prediction(end_time, data) {
       console.log(err);
       throw prediction_failed;
     });
-  console.log(typeof predict_value);
   return parseFloat(predict_value);
 }
 
@@ -657,8 +650,7 @@ router.get(
             }
           }
         }
-        //let current_time = Date.now() / 1000;
-        let current_time = 1685447282;
+        let current_time = Date.now() / 1000;
         if(end_time > current_time) {
           // split data into seconds
           tmp_start = parseInt(start_time);
@@ -666,7 +658,6 @@ router.get(
 
           while (tmp_end <= end_time) {
             tmp_total = 0.0;
-            console.log(tmp_start + " ~ " + tmp_end);
             for (let i = 0; i < power_sockets.length; i++) {
               const current_power_socket = await power_socket.findById(
                 power_sockets[i]
@@ -691,10 +682,8 @@ router.get(
           res.status(200).json(total_comsumption+predict_value);
         }
         else{res.status(200).json(total_comsumption);}
-        
       }
     } catch (error) {
-      console.log(error)
       res.status(400).json({ message: error.message });
     }
   }
