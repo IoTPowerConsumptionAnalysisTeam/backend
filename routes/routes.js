@@ -8,21 +8,44 @@ const power_socket = require("../models/power_socket");
 
 const user = require("../models/user");
 
+//Import PythonShell module.
+const { PythonShell } = require("python-shell");
+
+// Import file system
+const fs = require("fs");
+
 const not_your_power_socket = "This isn't your power socket";
 const user_not_found = "user not found";
 const power_socket_not_found = "power socket not found";
 const category_not_found = "category not found";
 const update_failed = "update failed due to internal server error";
 const delete_failed = "delete failed due to internal server error";
+const prediction_failed = "prediction failed due to internal server error";
 
 // register user
 router.post("/user", async (req, res) => {
-  const data = new user({
-    name: req.body.name,
-  });
+  const name = req.body.name;
   try {
-    const dataToSave = await data.save();
-    res.status(200).json(dataToSave._id);
+    let user_id = "";
+    //get all names
+    const allUsers = await user.find();
+    for (let i = 0; i < allUsers.length; i++) {
+      if (allUsers[i].name == name) {
+        user_id = allUsers[i]._id;
+        break;
+      }
+    }
+
+    // register
+    if (user_id.length == 0) {
+      const newUser = new user({
+        name: req.body.name,
+      });
+      const saveResult = await newUser.save();
+      user_id = saveResult._id;
+    }
+
+    res.status(200).json(user_id);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -80,9 +103,11 @@ router.post("/user/:user_id/power_socket", findUser, async (req, res) => {
 
 // get all power sockets
 router.get("/user/:user_id/power_socket", findUser, async (req, res) => {
+  console.log("get socket");
   try {
     // return power_socket array
     let power_socket_array = req.target_user.power_socket;
+    console.log(power_socket_array[8]);
     res.status(200).json(power_socket_array);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -92,6 +117,7 @@ router.get("/user/:user_id/power_socket", findUser, async (req, res) => {
 async function findPowerSocket(req, res, next) {
   try {
     const power_socket_id = req.params.power_socket_id;
+    console.log(power_socket_id);
     const target_power_socket = await power_socket.findById(power_socket_id);
     if (target_power_socket == null) {
       throw power_socket_not_found;
@@ -516,7 +542,7 @@ class Power {
   constructor(start_time, end_time, consumption) {
     this.start_time = start_time;
     this.end_time = end_time;
-    this.consumption = parseInt(consumption);
+    this.consumption = parseFloat(consumption);
   }
 }
 
@@ -558,6 +584,41 @@ router.post(
     }
   }
 );
+router.get("/test", async (req, res) => {
+  dd = [3, 5];
+  let result = await prediction(1688121063, dd);
+  res.status(200).json(result);
+});
+
+async function prediction(end_time, data) {
+  console.log("prediction");
+  let current_time = Date.now() / 1000;
+  let length_for_prediction = end_time - current_time;
+  //Here are the option object in which arguments can be passed for the python_test.js.
+  let options = {
+    mode: "text",
+    pythonOptions: ["-u"], // get print results in real-time
+    //scriptPath: 'path/to/my/scripts', //If you are having python_test.py script in same folder, then it's optional.
+    args: [length_for_prediction], //An argument which can be accessed in the script using sys.argv[1]
+  };
+  fs.writeFile("./data/data.json", JSON.stringify(data), function (err) {
+    if (err) {
+      console.log(err);
+      throw prediction_failed;
+    }
+  });
+  let predict_value = 0.0;
+  await PythonShell.run("predict.py", options)
+    .then((result) => {
+      predict_value = result[0];
+    })
+    .catch((err) => {
+      console.log(err);
+      throw prediction_failed;
+    });
+  console.log(typeof predict_value);
+  return parseFloat(predict_value);
+}
 
 // get total comsumption
 router.get(
@@ -568,13 +629,15 @@ router.get(
     const end_time = req.params.end_time;
     try {
       // calculate comsumption
-      let total_comsumption = 0,
+      let total_comsumption = 0.0,
         no_power_socket = false;
       if (req.target_user.power_socket.length == 0) {
         no_power_socket = true;
       }
+      let split_result = [];
+      let predict_value = 0.0;
       if (no_power_socket) {
-        total_comsumption = 0;
+        total_comsumption = 0.0;
       } else {
         const power_sockets = req.target_user.power_socket;
         for (let i = 0; i < power_sockets.length; i++) {
@@ -592,8 +655,40 @@ router.get(
             }
           }
         }
+        let current_time = Date.now() / 1000;
+        if (end_time > current_time) {
+          // split data into seconds
+          tmp_start = parseInt(start_time);
+          tmp_end = parseInt(start_time) + 60;
+
+          while (tmp_end <= end_time) {
+            tmp_total = 0.0;
+            console.log(tmp_start + " ~ " + tmp_end);
+            for (let i = 0; i < power_sockets.length; i++) {
+              const current_power_socket = await power_socket.findById(
+                power_sockets[i]
+              );
+              const number_of_power = current_power_socket.power.length;
+              for (let j = 0; j < number_of_power; j++) {
+                const current_power = current_power_socket.power[j];
+                if (
+                  current_power.start_time >= tmp_start &&
+                  current_power.end_time <= tmp_end
+                ) {
+                  //total_comsumption += current_power.consumption;
+                  tmp_total += current_power.consumption;
+                }
+              }
+            }
+            split_result.push(tmp_total);
+            tmp_start += 60;
+            tmp_end = tmp_start + 60;
+          }
+        }
+        predict_value = await prediction(end_time, split_result);
       }
-      res.status(200).json(total_comsumption);
+      //res.status(200).json(total_comsumption + predict_value);
+      res.status(200).json(predict_value.toString());
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
@@ -617,7 +712,7 @@ router.get(
         )
       ) {
         // calculate comsumption
-        let total_comsumption = 0;
+        let total_comsumption = 0.0;
         const number_of_power = target_power_socket.power.length;
 
         for (let i = 0; i < number_of_power; i++) {
@@ -653,13 +748,13 @@ router.get(
     const end_time = req.params.end_time;
     try {
       // calculate comsumption
-      let total_comsumption = 0,
+      let total_comsumption = 0.0,
         no_power_socket = false;
       if (req.target_user.power_socket.length == 0) {
         no_power_socket = true;
       }
       if (no_power_socket) {
-        total_comsumption = 0;
+        total_comsumption = 0.0;
       } else {
         const power_sockets = req.target_user.power_socket;
         for (let i = 0; i < power_sockets.length; i++) {
@@ -721,13 +816,13 @@ router.get(
     const end_time = req.params.end_time;
     try {
       // calculate comsumption
-      let total_comsumption = 0,
+      let total_comsumption = 0.0,
         no_power_socket = false;
       if (req.target_user.power_socket.length == 0) {
         no_power_socket = true;
       }
       if (no_power_socket) {
-        total_comsumption = 0;
+        total_comsumption = 0.0;
       } else {
         const power_sockets = req.target_user.power_socket;
         for (let i = 0; i < power_sockets.length; i++) {
@@ -763,12 +858,14 @@ router.get(
     const start_time = req.params.start_time;
     const end_time = req.params.end_time;
     try {
-      if (verifyPowerSocketOwnership(
-        req.target_user.power_socket,
-        req.power_socket_id
-      )) {
+      if (
+        verifyPowerSocketOwnership(
+          req.target_user.power_socket,
+          req.power_socket_id
+        )
+      ) {
         // calculate comsumption
-        let total_comsumption = 0;
+        let total_comsumption = 0.0;
         const number_of_power = target_power_socket.power.length;
 
         for (let i = 0; i < number_of_power; i++) {
@@ -804,13 +901,13 @@ router.get(
     const end_time = req.params.end_time;
     try {
       // calculate comsumption
-      let total_comsumption = 0,
+      let total_comsumption = 0.0,
         no_power_socket = false;
       if (req.target_user.power_socket.length == 0) {
         no_power_socket = true;
       }
       if (no_power_socket) {
-        total_comsumption = 0;
+        total_comsumption = 0.0;
       } else {
         const power_sockets = req.target_user.power_socket;
         for (let i = 0; i < power_sockets.length; i++) {
