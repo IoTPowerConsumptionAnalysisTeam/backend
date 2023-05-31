@@ -24,7 +24,7 @@ for i in range(predict_time):
             x.insert(0, i)
     if len(x) < 60:
         for i in range(60 - len(x)):
-            x.insert(0, data[0])
+            x.insert(0, 0)
     x = np.array(x)
     x = scaler.transform(x.reshape(-1, 1))
     x = x.reshape(1, 1, 60)

@@ -592,8 +592,10 @@ router.get("/test", async (req, res) => {
 
 async function prediction(end_time, data) {
   console.log("prediction");
-  let current_time = Date.now() / 1000;
+  //let current_time = Date.now() / 1000;
+  let current_time = 1685447282;
   let length_for_prediction = end_time - current_time;
+  console.log("length:"+length_for_prediction)
   //Here are the option object in which arguments can be passed for the python_test.js.
   let options = {
     mode: "text",
@@ -655,8 +657,9 @@ router.get(
             }
           }
         }
-        let current_time = Date.now() / 1000;
-        if (end_time > current_time) {
+        //let current_time = Date.now() / 1000;
+        let current_time = 1685447282;
+        if(end_time > current_time) {
           // split data into seconds
           tmp_start = parseInt(start_time);
           tmp_end = parseInt(start_time) + 60;
@@ -684,12 +687,14 @@ router.get(
             tmp_start += 60;
             tmp_end = tmp_start + 60;
           }
+          predict_value = await prediction(end_time, split_result);
+          res.status(200).json(total_comsumption+predict_value);
         }
-        predict_value = await prediction(end_time, split_result);
+        else{res.status(200).json(total_comsumption);}
+        
       }
-      //res.status(200).json(total_comsumption + predict_value);
-      res.status(200).json(predict_value.toString());
     } catch (error) {
+      console.log(error)
       res.status(400).json({ message: error.message });
     }
   }
